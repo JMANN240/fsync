@@ -4,6 +4,7 @@ from cryptography.fernet import Fernet
 import tomli
 import os
 import hashlib
+from time import sleep
 
 with open('config.toml', 'rb') as config_file:
 	config = tomli.load(config_file)
@@ -31,17 +32,34 @@ def get_file_digest(server_file_path):
 	res_json = res.json()
 	return res_json['data']
 
+def update_files(mappings):
+	for client_file_path, server_file_path in mappings:
+		server_digest = get_file_digest(server_file_path)
+		client_digest = hashlib.sha256(open(client_file_path, 'rb').read()).hexdigest()
 
+		if server_digest != client_digest:
+			server_modified_seconds = get_file_modified_time(server_file_path)
+			client_modified_seconds = os.path.getmtime(client_file_path)
 
-for client_file_path, server_file_path in config['CLIENT']['MAPPINGS'].items():
-	server_digest = get_file_digest(server_file_path)
-	client_digest = hashlib.sha256(open(client_file_path, 'rb').read()).hexdigest()
+			if client_modified_seconds > server_modified_seconds:
+				upload_file(client_file_path, server_file_path)
+			else:
+				download_file(client_file_path, server_file_path)
 
-	if server_digest != client_digest:
-		server_modified_seconds = get_file_modified_time(server_file_path)
-		client_modified_seconds = os.path.getmtime(client_file_path)
+def sync():
+	global config
 
-		if client_modified_seconds > server_modified_seconds:
-			upload_file(client_file_path, server_file_path)
-		else:
-			download_file(client_file_path, server_file_path)
+	with open('config.toml', 'rb') as config_file:
+		config = tomli.load(config_file)
+	
+	update_files(config['CLIENT']['MAPPINGS']['FILES'].items())
+	for client_dir, server_dir in config['CLIENT']['MAPPINGS']['DIRECTORIES'].items():
+		for path, dirs, files in os.walk(client_dir):
+			for file in files:
+				client_path = os.path.join(path, file)
+				server_path = os.path.join(server_dir, path.replace(client_dir, "", 1), file)
+				update_files([(client_path, server_path)])
+
+while True:
+	sync()
+	sleep(5)
