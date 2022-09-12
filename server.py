@@ -4,6 +4,7 @@ from cryptography.fernet import Fernet
 import tomli
 import os
 import hashlib
+import json
 
 app = FastAPI()
 
@@ -68,4 +69,22 @@ def get_file_digest(server_file_path: str):
 		return {
 			"status": "success",
 			"data": b''
+		}
+
+@app.get("/directory")
+def get_directory_files(server_directory_path: str):
+	total_path = f"{config['SERVER']['FILES_ROOT']}{server_directory_path}"
+	if os.path.exists(total_path):
+		path_files = []
+		for path, dirs, files in os.walk(total_path):
+			for file in files:
+				path_files.append(os.path.join(path.replace(total_path, "", 1), file))
+		return {
+			"status": "success",
+			"data": fernet.encrypt(json.dumps(path_files).encode('utf-8'))
+		}
+	else:
+		return {
+			"status": "failure",
+			"reason": f"'{server_directory_path}' does not exist on the server."
 		}
