@@ -1,24 +1,47 @@
+from pydoc import cli
 import requests
 from cryptography.fernet import Fernet
 import tomli
 import os
+import hashlib
 
 with open('config.toml', 'rb') as config_file:
 	config = tomli.load(config_file)
 
-fernet = Fernet(config['FERNET_KEY'])
+fernet = Fernet(config['GLOBAL']['FERNET_KEY'])
 
-def download_file(filename: str):
-	with requests.get(f"{config['SERVER_URL']}/file", params={'server_file_name': filename}, stream=True) as res:
+def download_file(client_file_path: str, server_file_path: str):
+	with requests.get(f"{config['CLIENT']['SERVER_URL']}/file", params={'server_file_path': server_file_path}, stream=True) as res:
 		dec = fernet.decrypt(res.json().get('data'))
-		with open(filename, 'wb') as f:
+		with open(client_file_path, 'wb') as f:
 			f.write(dec)
 
-def upload_file(filepath: str):
-	filename = os.path.split(filepath)[-1]
-	with open(filepath, 'rb') as f:
+def upload_file(client_file_path: str, server_file_path: str):
+	with open(client_file_path, 'rb') as f:
 		enc = fernet.encrypt(f.read())
-		requests.put(f"{config['SERVER_URL']}/file", files={'client_file_bytes': enc}, params={'client_file_name': filename})
+		requests.put(f"{config['CLIENT']['SERVER_URL']}/file", files={'client_file_bytes': enc}, params={'server_file_path': server_file_path})
 
-for filepath in config['FILES']:
-	upload_file(filepath)
+def get_file_modified_time(server_file_path):
+	res = requests.get(f"{config['CLIENT']['SERVER_URL']}/file/time", params={'server_file_path': server_file_path})
+	res_json = res.json()
+	return res_json['data']
+
+def get_file_digest(server_file_path):
+	res = requests.get(f"{config['CLIENT']['SERVER_URL']}/file/digest", params={'server_file_path': server_file_path})
+	res_json = res.json()
+	return res_json['data']
+
+
+
+for client_file_path, server_file_path in config['CLIENT']['MAPPINGS'].items():
+	server_digest = get_file_digest(server_file_path)
+	client_digest = hashlib.sha256(open(client_file_path, 'rb').read()).hexdigest()
+
+	if server_digest != client_digest:
+		server_modified_seconds = get_file_modified_time(server_file_path)
+		client_modified_seconds = os.path.getmtime(client_file_path)
+
+		if client_modified_seconds > server_modified_seconds:
+			upload_file(client_file_path, server_file_path)
+		else:
+			download_file(client_file_path, server_file_path)
