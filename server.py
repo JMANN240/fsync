@@ -14,7 +14,7 @@ with open('config.toml', 'rb') as config_file:
 
 fernet = Fernet(config['GLOBAL']['FERNET_KEY'])
 
-logging.basicConfig(filename=config['GLOBAL']['LOG_FILE'], encoding='utf-8', level=logging.DEBUG)
+logging.basicConfig(filename=config['GLOBAL']['LOG_FILE'], level=logging.DEBUG)
 
 @app.get("/file")
 def get_file(server_file_path: str):

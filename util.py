@@ -6,7 +6,7 @@ import logging
 with open('config.toml', 'rb') as config_file:
 	config = tomli.load(config_file)
 
-logging.basicConfig(filename=config['GLOBAL']['LOG_FILE'], encoding='utf-8', level=logging.DEBUG)
+logging.basicConfig(filename=config['GLOBAL']['LOG_FILE'], level=logging.DEBUG)
 
 def get_last_modified_time(path: str):
 	logging.debug(f"getting last modified time of {path}")

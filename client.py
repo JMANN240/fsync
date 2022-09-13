@@ -12,7 +12,7 @@ with open('config.toml', 'rb') as config_file:
 
 fernet = Fernet(config['GLOBAL']['FERNET_KEY'])
 
-logging.basicConfig(filename=config['GLOBAL']['LOG_FILE'], encoding='utf-8', level=logging.DEBUG)
+logging.basicConfig(filename=config['GLOBAL']['LOG_FILE'], level=logging.DEBUG)
 
 def download_file(client_file_path: str, server_file_path: str):
 	logging.info(f"trying to download {server_file_path} to {client_file_path}")
