@@ -18,7 +18,7 @@ def get_last_modified_time(path: str):
 
 def get_digest(path: str):
 	logging.debug(f"getting digest of {path}")
-	digest = b''
+	digest = ''
 	if os.path.isfile(path):
 		digest = hashlib.sha256(open(path, 'rb').read()).hexdigest()
 	logging.debug(f"digest of {path}: {digest}")

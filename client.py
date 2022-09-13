@@ -5,6 +5,7 @@ from time import sleep
 import json
 import util
 import logging
+import os
 
 with open('config.toml', 'rb') as config_file:
 	config = tomli.load(config_file)
@@ -17,6 +18,9 @@ def download_file(client_file_path: str, server_file_path: str):
 	logging.info(f"trying to download {server_file_path} to {client_file_path}")
 	with requests.get(f"{config['CLIENT']['SERVER_URL']}/file", params={'server_file_path': server_file_path}, stream=True) as res:
 		dec = fernet.decrypt(res.json().get('data'))
+		total_directory = os.path.dirname(client_file_path)
+		if not os.path.exists(total_directory):
+			os.makedirs(total_directory)
 		with open(client_file_path, 'wb') as f:
 			f.write(dec)
 
