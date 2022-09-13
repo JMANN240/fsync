@@ -13,7 +13,7 @@ client_config['MAPPINGS'] = dict()
 client_config['MAPPINGS']['FILES'] = dict()
 client_config['MAPPINGS']['DIRECTORIES'] = dict()
 client_config['SERVER_URL'] = ''
-global_config['SYNC_SECONDS'] = 60
+client_config['SYNC_SECONDS'] = 60
 config['CLIENT'] = client_config
 
 server_config = dict()
