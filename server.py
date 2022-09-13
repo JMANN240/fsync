@@ -35,9 +35,7 @@ def get_file(server_file_path: str):
 @app.put("/file")
 def put_file(server_file_path: str, client_file_bytes: bytes = File()):
 	total_path = f"{config['SERVER']['FILES_ROOT']}{server_file_path}"
-	print(total_path)
 	total_directory = os.path.dirname(total_path)
-	print(total_directory)
 	if not os.path.exists(total_directory):
 		os.makedirs(total_directory)
 	with open(total_path, 'wb') as server_file:
@@ -48,14 +46,14 @@ def put_file(server_file_path: str, client_file_bytes: bytes = File()):
 def get_file_time(server_file_path: str):
 	total_path = f"{config['SERVER']['FILES_ROOT']}{server_file_path}"
 	return {
-		"data": util.get_last_modified_time(total_path)
+		"data": fernet.encrypt(str(util.get_last_modified_time(total_path)).encode('utf-8'))
 	}
 
 @app.get("/file/digest")
 def get_file_digest(server_file_path: str):
 	total_path = f"{config['SERVER']['FILES_ROOT']}{server_file_path}"
 	return {
-		"data": util.get_digest(total_path)
+		"data": fernet.encrypt(util.get_digest(total_path).encode('utf-8'))
 	}
 
 @app.get("/directory")

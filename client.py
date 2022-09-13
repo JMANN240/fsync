@@ -12,7 +12,6 @@ with open('config.toml', 'rb') as config_file:
 fernet = Fernet(config['GLOBAL']['FERNET_KEY'])
 
 logging.basicConfig(filename=config['GLOBAL']['LOG_FILE'], encoding='utf-8', level=logging.DEBUG)
-logging.info("test")
 
 def download_file(client_file_path: str, server_file_path: str):
 	logging.info(f"trying to download {server_file_path} to {client_file_path}")
@@ -29,13 +28,13 @@ def upload_file(client_file_path: str, server_file_path: str):
 
 def get_server_modified_time(server_file_path):
 	res = requests.get(f"{config['CLIENT']['SERVER_URL']}/file/time", params={'server_file_path': server_file_path})
-	res_json = res.json()
-	return res_json['data']
+	dec = float(fernet.decrypt(res.json().get('data')))
+	return dec
 
 def get_server_digest(server_file_path):
 	res = requests.get(f"{config['CLIENT']['SERVER_URL']}/file/digest", params={'server_file_path': server_file_path})
-	res_json = res.json()
-	return res_json['data']
+	dec = fernet.decrypt(res.json().get('data')).decode()
+	return dec
 
 def get_server_subfiles(server_directory_path):
 	res = requests.get(f"{config['CLIENT']['SERVER_URL']}/directory", params={'server_directory_path': server_directory_path})
@@ -47,10 +46,12 @@ def update_files(mappings):
 		server_digest = get_server_digest(server_file_path)
 		client_digest = util.get_digest(client_file_path)
 
+		logging.debug(f"DIGEST TYPES: {type(client_digest)}, {type(server_digest)}")
 		logging.debug(f"client:{client_file_path}.digest {'=' if server_digest == client_digest else '!'}= server:{server_file_path}.digest")
 		if server_digest != client_digest:
 			server_modified_seconds = get_server_modified_time(server_file_path)
 			client_modified_seconds = util.get_last_modified_time(client_file_path)
+			logging.debug(f"TIME TYPES: {type(client_modified_seconds)}, {type(server_modified_seconds)}")
 
 			logging.debug(f"client:{client_file_path} is {'newer' if client_modified_seconds > server_modified_seconds else 'older'} than server:{server_file_path}.digest")
 			if client_modified_seconds > server_modified_seconds:
