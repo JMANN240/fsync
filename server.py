@@ -18,22 +18,31 @@ logging.basicConfig(filename=config['GLOBAL']['LOG_FILE'], encoding='utf-8', lev
 
 @app.get("/file")
 def get_file(server_file_path: str):
+	if ".." in server_file_path:
+		return {
+			"status": "failure",
+			"reason": f"Going up directories is not permitted."
+		}
 	total_path = f"{config['SERVER']['FILES_ROOT']}{server_file_path}"
 	path = Path(total_path)
-	if path.is_file():
-		with open(path, 'rb') as remote_file:
-			return {
-				"status": "success",
-				"data": fernet.encrypt(remote_file.read())
-			}
-	else:
+	if not path.is_file():
 		return {
 			"status": "failure",
 			"reason": f"'{server_file_path}' is not a file on the server."
 		}
+	with open(path, 'rb') as remote_file:
+		return {
+			"status": "success",
+			"data": fernet.encrypt(remote_file.read())
+		}
 
 @app.put("/file")
 def put_file(server_file_path: str, client_file_bytes: bytes = File()):
+	if ".." in server_file_path:
+		return {
+			"status": "failure",
+			"reason": f"Going up directories is not permitted."
+		}
 	total_path = f"{config['SERVER']['FILES_ROOT']}{server_file_path}"
 	total_directory = os.path.dirname(total_path)
 	if not os.path.exists(total_directory):
