@@ -3,8 +3,9 @@ from pathlib import Path
 from cryptography.fernet import Fernet
 import tomli
 import os
-import hashlib
 import json
+import util
+import logging
 
 app = FastAPI()
 
@@ -12,6 +13,8 @@ with open('config.toml', 'rb') as config_file:
 	config = tomli.load(config_file)
 
 fernet = Fernet(config['GLOBAL']['FERNET_KEY'])
+
+logging.basicConfig(filename=config['GLOBAL']['LOG_FILE'], encoding='utf-8', level=logging.DEBUG)
 
 @app.get("/file")
 def get_file(server_file_path: str):
@@ -44,47 +47,20 @@ def put_file(server_file_path: str, client_file_bytes: bytes = File()):
 @app.get("/file/time")
 def get_file_time(server_file_path: str):
 	total_path = f"{config['SERVER']['FILES_ROOT']}{server_file_path}"
-	path = Path(total_path)
-	if path.is_file():
-		return {
-			"status": "success",
-			"data": os.path.getmtime(path)
-		}
-	else:
-		return {
-			"status": "success",
-			"data": 0
-		}
+	return {
+		"data": util.get_last_modified_time(total_path)
+	}
 
 @app.get("/file/digest")
 def get_file_digest(server_file_path: str):
 	total_path = f"{config['SERVER']['FILES_ROOT']}{server_file_path}"
-	path = Path(total_path)
-	if path.is_file():
-		return {
-			"status": "success",
-			"data": hashlib.sha256(open(path, 'rb').read()).hexdigest()
-		}
-	else:
-		return {
-			"status": "success",
-			"data": b''
-		}
+	return {
+		"data": util.get_digest(total_path)
+	}
 
 @app.get("/directory")
 def get_directory_files(server_directory_path: str):
 	total_path = f"{config['SERVER']['FILES_ROOT']}{server_directory_path}"
-	if os.path.exists(total_path):
-		path_files = []
-		for path, dirs, files in os.walk(total_path):
-			for file in files:
-				path_files.append(os.path.join(path.replace(total_path, "", 1), file))
-		return {
-			"status": "success",
-			"data": fernet.encrypt(json.dumps(path_files).encode('utf-8'))
-		}
-	else:
-		return {
-			"status": "failure",
-			"reason": f"'{server_directory_path}' does not exist on the server."
-		}
+	return {
+		"data": fernet.encrypt(json.dumps([filepath.replace(config['SERVER']['FILES_ROOT'], "", 1) for filepath in util.get_subfiles(total_path)]).encode('utf-8'))
+	}
