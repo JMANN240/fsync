@@ -1,4 +1,7 @@
-from fastapi import FastAPI, File
+from genericpath import isdir, isfile
+from fastapi import FastAPI, File, Request
+from fastapi.templating import Jinja2Templates
+from fastapi.responses import FileResponse
 from pathlib import Path
 from cryptography.fernet import Fernet
 import tomli
@@ -9,12 +12,21 @@ import logging
 
 app = FastAPI()
 
+templates = Jinja2Templates(directory="templates")
+
 with open('config.toml', 'rb') as config_file:
 	config = tomli.load(config_file)
 
 fernet = Fernet(config['GLOBAL']['FERNET_KEY'])
 
 logging.basicConfig(filename=config['GLOBAL']['LOG_FILE'], level=logging.DEBUG)
+
+@app.get("/")
+def index():
+	return {
+			"status": "success",
+			"reason": "Hello, fsync!"
+		}
 
 @app.get("/file")
 def get_file(server_file_path: str):
@@ -71,3 +83,31 @@ def get_directory_files(server_directory_path: str):
 	return {
 		"data": fernet.encrypt(json.dumps([filepath.replace(config['SERVER']['FILES_ROOT'], "", 1) for filepath in util.get_subfiles(total_path)]).encode('utf-8'))
 	}
+
+@app.get("/files/{virtual_path:path}")
+def get_files(request: Request, virtual_path: str):
+	path = os.path.join(config['SERVER']['FILES_ROOT'], virtual_path)
+	if os.path.isdir(path):
+		contents = os.listdir(path)
+		files = [content for content in contents if os.path.isfile(os.path.join(path, content))]
+		dirs = [content for content in contents if os.path.isdir(os.path.join(path, content))]
+		links = []
+		if virtual_path != "":
+			links.append({
+				"ref": os.path.join("/files", *virtual_path.split(os.sep)[:-1]),
+				"name": ".."
+			})
+		for dir in dirs:
+			links.append({
+				"ref": os.path.join("/files", virtual_path, dir),
+				"name": f"/{dir}/"
+			})
+		for file in files:
+			if file != "index.html":
+				links.append({
+					"ref": os.path.join("/files", virtual_path, file),
+					"name": f"/{file}"
+				})
+		return templates.TemplateResponse("files.html", {"request": request, "links": links})
+	else:
+		return FileResponse(path)
