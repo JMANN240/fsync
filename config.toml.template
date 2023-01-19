@@ -1,0 +1,14 @@
+[GLOBAL]
+FERNET_KEY = "SECRET_KEY"
+LOG_FILE = "fsync.log"
+
+[CLIENT]
+SERVER_URL = "http://some.website.com"
+SYNC_SECONDS = 60
+
+[CLIENT.MAPPINGS.FILES]
+
+[CLIENT.MAPPINGS.DIRECTORIES]
+
+[SERVER]
+FILES_ROOT = "server_files"
